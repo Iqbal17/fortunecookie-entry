@@ -55,6 +55,14 @@ Stock lines deliberately NOT used: "Beware the ides of March" openings,
 "tall dark stranger" templates, "good things come to those who wait",
 "404" jokes — all stock fortunes or worn-out AI jokes, and the judge
 punishes them on criterion 3.
+
+Third pass (pass 3): the guard already covered blank, UTF-8, the 140-char
+cap, and the single-line rule, so the remaining hole was the write
+itself — a bad write (encoding slip, newline translation, truncated
+file) could still emit an entry.txt different from the validated line.
+main() now reads entry.txt back after writing and raises ValueError
+unless it is byte-identical to LINE, so the program can never silently
+emit an invalid entry even if the line is edited later.
 """
 
 import os
@@ -75,6 +83,11 @@ def main():
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, "w", encoding="utf-8", newline="") as f:
         f.write(LINE)
+    # Pass 3: verify the emitted file is byte-identical to the validated
+    # line, so a bad write can never silently produce an invalid entry.
+    with open(out_path, "r", encoding="utf-8", newline="") as f:
+        if f.read() != LINE:
+            raise ValueError("entry.txt does not match the validated line")
 
 
 if __name__ == "__main__":
